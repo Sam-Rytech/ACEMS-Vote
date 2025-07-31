@@ -12,7 +12,6 @@ export default function Home() {
   const [proposal, setProposal] = useState('')
   const [proposals, setProposals] = useState([])
 
-  // Connect Wallet
   const connectWallet = async () => {
     if (window.ethereum) {
       const [account] = await window.ethereum.request({
@@ -33,7 +32,6 @@ export default function Home() {
     }
   }
 
-  // Create Proposal
   const createProposal = async () => {
     if (!proposal || !contract) return
     try {
@@ -47,14 +45,20 @@ export default function Home() {
     }
   }
 
-  // Fetch Proposals
   const fetchProposals = async () => {
     try {
       const count = await contract.proposalCount()
       const list = []
-      for (let i = 0; i < Number(count); i++) {
-        const p = await contract.proposals(i) // This is okay in JS
-        list.push({ id: i, ...p })
+      for (let i = 1; i <= Number(count); i++) {
+        const [description, voteCount, isPaused, isDeleted] =
+          await contract.getProposal(i)
+        list.push({
+          id: i,
+          description,
+          voteCount: voteCount.toString(),
+          isPaused,
+          isDeleted,
+        })
       }
       setProposals(list)
     } catch (error) {
@@ -62,7 +66,6 @@ export default function Home() {
     }
   }
 
-  // Vote
   const vote = async (id) => {
     try {
       const tx = await contract.vote(id)
@@ -71,6 +74,36 @@ export default function Home() {
       fetchProposals()
     } catch (error) {
       console.error(error)
+    }
+  }
+
+  const pauseProposal = async (id) => {
+    try {
+      const tx = await contract.pauseProposal(id)
+      await tx.wait()
+      fetchProposals()
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const unpauseProposal = async (id) => {
+    try {
+      const tx = await contract.unpauseProposal(id)
+      await tx.wait()
+      fetchProposals()
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const deleteProposal = async (id) => {
+    try {
+      const tx = await contract.deleteProposal(id)
+      await tx.wait()
+      fetchProposals()
+    } catch (err) {
+      console.error(err)
     }
   }
 
@@ -114,8 +147,8 @@ export default function Home() {
             {proposals.length === 0 ? (
               <p>No proposals yet.</p>
             ) : (
-              proposals.map((p, idx) => (
-                <div key={idx} className="border p-4 my-2 rounded">
+              proposals.map((p) => (
+                <div key={p.id} className="border p-4 my-2 rounded space-y-2">
                   <p>
                     <strong>ID:</strong> {p.id}
                   </p>
@@ -123,14 +156,50 @@ export default function Home() {
                     <strong>Description:</strong> {p.description}
                   </p>
                   <p>
-                    <strong>Votes:</strong> {p.voteCount.toString()}
+                    <strong>Votes:</strong> {p.voteCount}
                   </p>
-                  <button
-                    onClick={() => vote(p.id)}
-                    className="mt-2 bg-purple-600 text-white px-3 py-1 rounded"
-                  >
-                    Vote
-                  </button>
+                  <p>
+                    <strong>Status:</strong>{' '}
+                    {p.isDeleted
+                      ? 'Deleted ❌'
+                      : p.isPaused
+                      ? 'Paused ⏸️'
+                      : 'Active ✅'}
+                  </p>
+
+                  {!p.isDeleted && !p.isPaused && (
+                    <button
+                      onClick={() => vote(p.id)}
+                      className="bg-purple-600 text-white px-3 py-1 rounded mr-2"
+                    >
+                      Vote
+                    </button>
+                  )}
+
+                  {!p.isDeleted && p.isPaused ? (
+                    <button
+                      onClick={() => unpauseProposal(p.id)}
+                      className="bg-yellow-600 text-white px-3 py-1 rounded mr-2"
+                    >
+                      Unpause
+                    </button>
+                  ) : !p.isDeleted ? (
+                    <button
+                      onClick={() => pauseProposal(p.id)}
+                      className="bg-yellow-600 text-white px-3 py-1 rounded mr-2"
+                    >
+                      Pause
+                    </button>
+                  ) : null}
+
+                  {!p.isDeleted && (
+                    <button
+                      onClick={() => deleteProposal(p.id)}
+                      className="bg-red-600 text-white px-3 py-1 rounded"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
               ))
             )}
