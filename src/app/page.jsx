@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { ethers } from 'ethers'
-import contractABI from '../abi/VotingPool.json'
+import contractArtifact from '../abi/VotingPool.json'
 
 const CONTRACT_ADDRESS = '0x9ec3c33f8cc9721a91716d846fbf766abac62e6e'
 
@@ -23,9 +23,10 @@ export default function Home() {
       const signer = await provider.getSigner()
       const instance = new ethers.Contract(
         CONTRACT_ADDRESS,
-        contractABI,
+        contractArtifact.abi,
         signer
       )
+
       setContract(instance)
     } else {
       alert('Please install MetaMask!')
